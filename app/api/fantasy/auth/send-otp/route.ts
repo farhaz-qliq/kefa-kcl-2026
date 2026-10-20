@@ -14,8 +14,9 @@ export async function POST(req: NextRequest) {
   const { email } = await req.json();
   if (!email || !email.includes("@")) return fail("valid email required", 400);
 
-  const conn = await connectDB();
-  if (!conn) return fail("DB unavailable", 503);
+  let conn;
+  try { conn = await connectDB(); } catch { conn = null; }
+  if (!conn) return fail("Service unavailable — please try again shortly", 503);
 
   const otp       = String(randomInt(100000, 999999));
   const hash      = hashOTP(otp, email);

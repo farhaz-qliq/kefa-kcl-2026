@@ -14,8 +14,9 @@ export async function POST(req: NextRequest) {
   const { email, otp } = await req.json();
   if (!email || !otp) return fail("email and otp required", 400);
 
-  const conn = await connectDB();
-  if (!conn) return fail("DB unavailable", 503);
+  let conn;
+  try { conn = await connectDB(); } catch { conn = null; }
+  if (!conn) return fail("Service unavailable — please try again shortly", 503);
 
   const normalEmail = email.toLowerCase();
 
