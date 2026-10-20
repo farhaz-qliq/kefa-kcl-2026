@@ -32,8 +32,9 @@ export async function POST(req: NextRequest) {
   if (apiKey) {
     const { Resend } = await import("resend");
     const resend = new Resend(apiKey);
-    const from = process.env.RESEND_FROM ?? "KEFA Fantasy <onboarding@resend.dev>";
-    await resend.emails.send({
+    const from = process.env.RESEND_FROM ?? "onboarding@resend.dev";
+
+    const { error } = await resend.emails.send({
       from,
       to: email,
       subject: "Your KEFA Fantasy verification code",
@@ -49,8 +50,12 @@ export async function POST(req: NextRequest) {
         </div>
       `,
     });
+
+    if (error) {
+      console.error("[Resend error]", error);
+      return fail(`Email delivery failed: ${error.message}`, 502);
+    }
   } else {
-    // Dev mode: log to console
     console.log(`[KEFA Fantasy OTP] ${email} → ${otp}`);
   }
 
