@@ -5,14 +5,16 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import {
-  Crown, Star, ArrowLeftRight, X, ChevronRight, ChevronLeft,
-  Trophy, RefreshCw,
+  Crown, ArrowLeftRight, X, ChevronRight, ChevronLeft,
+  Trophy,
 } from "lucide-react";
 import { useFantasyStore } from "@/store/fantasyStore";
 import { MOCK_FANTASY_PLAYERS } from "@/mocks";
 import { MOCK_TEAMS } from "@/mocks";
 import { cn } from "@/lib/utils";
 import type { FPosition } from "@/types/fantasy";
+import { GoalIcon, AssistIcon } from "@/components/StatIcons";
+import { FANTASY_LIVE, CURRENT_GW } from "@/lib/fantasyConfig";
 
 // ── Shirt helpers ──────────────────────────────────────────────────────────────
 function hexToRgb(hex: string) {
@@ -102,70 +104,64 @@ interface ViewSlotProps {
   slotIdx: number;
   playerId: string;
   captainId: string;
-  vcId: string;
   swapFrom: number | null;
   onTap: () => void;
   onPitch?: boolean;
 }
 
-function ViewSlot({ slotIdx, playerId, captainId, vcId, swapFrom, onTap, onPitch = true }: ViewSlotProps) {
+function ViewSlot({ slotIdx, playerId, captainId, swapFrom, onTap, onPitch = true }: ViewSlotProps) {
   const player     = playerId ? MOCK_FANTASY_PLAYERS.find((p) => p.id === playerId) : null;
   const team       = player ? getTeam(player.teamId) : null;
-  const shirtColor = team?.primaryColor ?? (onPitch ? "#2563eb" : "#e5e7eb");
+  const shirtColor = team?.primaryColor ?? (onPitch ? "rgba(255,255,255,0.15)" : "#e5e7eb");
   const isCap      = !!playerId && playerId === captainId;
-  const isVC       = !!playerId && playerId === vcId && !isCap;
   const slot       = SLOTS[slotIdx];
-
   const isSwapSource = swapFrom === slotIdx;
   const isSwapTarget = swapFrom !== null && swapFrom !== slotIdx && (() => {
     const from = SLOTS[swapFrom];
     return slot.pos === from.pos && slot.isStarter !== from.isStarter;
   })();
-
-  const displayPts = isCap ? (player?.totalPoints ?? 0) * 2 : (player?.totalPoints ?? 0);
+  const displayPts = FANTASY_LIVE
+    ? (isCap ? (player?.totalPoints ?? 0) * 2 : (player?.totalPoints ?? 0))
+    : null;
 
   return (
     <button
       onClick={onTap}
       className={cn(
-        "flex flex-col items-center gap-0.5 relative rounded-xl p-1 transition-all",
-        isSwapSource && "ring-2 ring-[#C7FF00] ring-offset-1 ring-offset-transparent",
-        isSwapTarget && "ring-2 ring-[#00D9FF] ring-offset-1 ring-offset-transparent",
+        "flex flex-col items-center relative transition-all",
+        isSwapSource && "ring-2 ring-[#C7FF00] rounded-lg",
+        isSwapTarget && "ring-2 ring-[#00D9FF] rounded-lg",
       )}
-      style={{ minWidth: 52 }}
+      style={{ width: 58, minWidth: 58 }}
     >
       <div className="relative">
         {player ? <Shirt color={shirtColor} /> : <EmptyShirt onPitch={onPitch} />}
         {player && team?.badgeUrl && (
-          <div className="absolute" style={{ top: 18, left: "50%", transform: "translateX(-50%)", width: 20, height: 20 }}>
+          <div className="absolute" style={{ top: 16, left: "50%", transform: "translateX(-50%)", width: 18, height: 18 }}>
             <Image src={team.badgeUrl} alt="" fill className="object-contain drop-shadow-sm" />
           </div>
         )}
         {isCap && (
-          <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 bg-[#C7FF00] rounded-full w-5 h-5 flex items-center justify-center shadow">
-            <span className="font-heading text-[#080d18] text-[9px] leading-none">C</span>
-          </div>
-        )}
-        {isVC && (
-          <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 bg-[#00D9FF] rounded-full w-5 h-5 flex items-center justify-center shadow">
-            <Star size={10} color="#080d18" fill="#080d18" />
-          </div>
-        )}
-        {player && (
-          <div
-            className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 rounded-full min-w-[22px] text-center shadow-sm px-1.5"
-            style={{ backgroundColor: isCap ? "#C7FF00" : "rgba(8,13,24,0.85)", paddingTop: 2, paddingBottom: 2 }}
-          >
-            <span className={cn("text-[8px] font-heading leading-none", isCap ? "text-[#080d18]" : "text-[#C7FF00]")}>
-              {displayPts}
-            </span>
+          <div className="absolute -top-1 -right-1 w-[18px] h-[18px] rounded-full bg-[#080d18] border-2 border-[#C7FF00] flex items-center justify-center shadow-md">
+            <span className="font-heading text-[#C7FF00] text-[8px] leading-none">C</span>
           </div>
         )}
       </div>
-      <span className={cn("text-[9px] font-bold leading-none text-center max-w-[62px] truncate mt-1.5", onPitch ? "text-white" : "text-navy")}>
-        {player ? player.name.split(" ")[0] : slot.pos}
-      </span>
-      {isCap && player && <span className="text-[7px] font-heading text-[#C7FF00] leading-none">2×</span>}
+      {/* FPL-style name pill */}
+      <div className="w-full text-center rounded-[3px] px-1 mt-0.5"
+        style={{ backgroundColor: onPitch ? (isCap ? "#C7FF00" : "rgba(8,13,24,0.88)") : "#d1d5db", paddingTop: 2, paddingBottom: 2 }}>
+        <span className="text-[8px] font-bold leading-none block truncate"
+          style={{ color: (isCap && onPitch) ? "#080d18" : onPitch ? "#ffffff" : "#374151" }}>
+          {player ? player.name.split(" ")[0] : slot.pos}
+        </span>
+      </div>
+      {/* Points pill — only when fantasy is live and player is on pitch */}
+      {onPitch && player && displayPts !== null && (
+        <div className="w-full text-center rounded-[3px] px-1 mt-px"
+          style={{ backgroundColor: "rgba(255,255,255,0.18)", paddingTop: 0, paddingBottom: 0, lineHeight: 1 }}>
+          <span className="text-[7px] font-bold text-white" style={{ lineHeight: 1, display: "block" }}>{displayPts}</span>
+        </div>
+      )}
     </button>
   );
 }
@@ -185,54 +181,38 @@ interface LeagueEntry {
   isUser?: boolean;
 }
 
-// playerIds order: [GK, DEF, DEF, DEF, FWD, FWD, FWD, GK-sub, DEF-sub, FWD-sub]
-const MOCK_MANAGERS: LeagueEntry[] = [
-  { id:"m1", managerName:"Kareem Al Sayed",  teamName:"Desert Warriors FC",   avatarColor:"#EF4444", totalPoints:634, gwPoints:72, captainId:"fp78", playerIds:["fp7","fp74","fp8","fp32","fp78","fp90","fp36","fp13","fp2","fp30"] },
-  { id:"m2", managerName:"Anjali Nair",       teamName:"Malabar Dream XI",     avatarColor:"#A855F7", totalPoints:612, gwPoints:65, captainId:"fp66", playerIds:["fp31","fp20","fp44","fp62","fp66","fp84","fp48","fp19","fp21","fp54"] },
-  { id:"m3", managerName:"Faisal Rahman",     teamName:"Gulf Stars Elite",     avatarColor:"#F59E0B", totalPoints:581, gwPoints:58, captainId:"fp72", playerIds:["fp67","fp68","fp86","fp92","fp72","fp60","fp96","fp25","fp51","fp18"] },
-  { id:"m4", managerName:"Ravi Mohan",        teamName:"Kerala Knights",       avatarColor:"#10B981", totalPoints:498, gwPoints:54, captainId:"fp6",  playerIds:["fp1","fp3","fp56","fp75","fp6","fp42","fp24","fp49","fp27","fp12"] },
-  { id:"m5", managerName:"Zaid Khalid",       teamName:"Emirates United",      avatarColor:"#00D9FF", totalPoints:475, gwPoints:49, captainId:"fp54", playerIds:["fp55","fp50","fp33","fp80","fp54","fp48","fp60","fp37","fp9","fp96"] },
-  { id:"m6", managerName:"Anil Prakash",      teamName:"Calicut Stars",        avatarColor:"#0EA5E9", totalPoints:453, gwPoints:47, captainId:"fp30", playerIds:["fp43","fp14","fp45","fp63","fp30","fp42","fp18","fp61","fp26","fp72"] },
-  { id:"m7", managerName:"Sara Thomas",       teamName:"KCL United",           avatarColor:"#EC4899", totalPoints:432, gwPoints:45, captainId:"fp78", playerIds:["fp79","fp15","fp57","fp81","fp36","fp78","fp66","fp85","fp87","fp84"] },
-  { id:"m8", managerName:"Javed Hussain",     teamName:"Al Khaliji FC",        avatarColor:"#6B7280", totalPoints:408, gwPoints:42, captainId:"fp90", playerIds:["fp91","fp69","fp93","fp38","fp90","fp6","fp24","fp73","fp39","fp54"] },
-];
 
-// ── Mock GW history ────────────────────────────────────────────────────────────
-const CURRENT_GW = 6;
-const GW_HISTORY = [
-  { gw: 1, gwPoints: 62,  seasonPts: 62,  rank: 8 },
-  { gw: 2, gwPoints: 48,  seasonPts: 110, rank: 7 },
-  { gw: 3, gwPoints: 71,  seasonPts: 181, rank: 6 },
-  { gw: 4, gwPoints: 55,  seasonPts: 236, rank: 5 },
-  { gw: 5, gwPoints: 83,  seasonPts: 319, rank: 4 },
-  { gw: 6, gwPoints: 51,  seasonPts: 370, rank: 4 }, // current GW (live)
-];
+// ── GW history (populated from API once FANTASY_LIVE = true) ─────────────────
+const GW_HISTORY: { gw: number; gwPoints: number; seasonPts: number; rank: number }[] = [];
 
 // ── Main Page ──────────────────────────────────────────────────────────────────
 export default function FantasyPage() {
   const router = useRouter();
   const { isAuthenticated, onboardingComplete, user, squad, setSquad, syncUser, logout } = useFantasyStore();
 
+  const [hydrated,       setHydrated]       = useState(false);
   const [tab,            setTab]            = useState<Tab>("MY TEAM");
   const [localIds,       setLocalIds]       = useState<string[]>(() => squad?.playerIds ?? []);
   const [captainId,      setCaptainId]      = useState(() => squad?.captainId ?? "");
-  const [vcId,           setVcId]           = useState(() => squad?.viceCaptainId ?? "");
   const [actionSlot,     setActionSlot]     = useState<number | null>(null);
   const [swapFrom,       setSwapFrom]       = useState<number | null>(null);
   const [leagueView,     setLeagueView]     = useState<string | null>(null);
   const [viewGW,         setViewGW]         = useState(CURRENT_GW);
-  const [leagueManagers, setLeagueManagers] = useState<LeagueEntry[]>(MOCK_MANAGERS);
+  const [leagueManagers, setLeagueManagers] = useState<LeagueEntry[]>([]);
+
+  // Wait for Zustand to hydrate from localStorage before checking auth
+  useEffect(() => { setHydrated(true); }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
     if (!isAuthenticated) router.replace("/fantasy/login");
     else if (!onboardingComplete) router.replace("/fantasy/onboard");
-  }, [isAuthenticated, onboardingComplete, router]);
+  }, [hydrated, isAuthenticated, onboardingComplete, router]);
 
   useEffect(() => {
     if (squad) {
       setLocalIds(squad.playerIds);
       setCaptainId(squad.captainId);
-      setVcId(squad.viceCaptainId);
     }
   }, [squad]);
 
@@ -259,12 +239,12 @@ export default function FantasyPage() {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const persistSquad = useCallback((playerIds: string[], captain: string, vc: string) => {
+  const persistSquad = useCallback((playerIds: string[], captain: string) => {
     if (!user?.email) return;
     fetch("/api/fantasy/squad", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ userId: user.email, playerIds, captainId: captain, viceCaptainId: vc }),
+      body: JSON.stringify({ userId: user.email, playerIds, captainId: captain, viceCaptainId: "" }),
     }).catch(() => {});
   }, [user?.email]);
 
@@ -305,8 +285,8 @@ export default function FantasyPage() {
         const next = [...localIds];
         [next[swapFrom], next[slotIdx]] = [next[slotIdx], next[swapFrom]];
         setLocalIds(next);
-        setSquad({ playerIds: next, captainId, viceCaptainId: vcId });
-        persistSquad(next, captainId, vcId);
+        setSquad({ playerIds: next, captainId, viceCaptainId: "" });
+        persistSquad(next, captainId);
       }
       setSwapFrom(null);
       return;
@@ -316,15 +296,8 @@ export default function FantasyPage() {
   function handleSetCaptain(playerId: string) {
     const newCap = captainId === playerId ? "" : playerId;
     setCaptainId(newCap);
-    setSquad({ playerIds: localIds, captainId: newCap, viceCaptainId: vcId });
-    persistSquad(localIds, newCap, vcId);
-    setActionSlot(null);
-  }
-  function handleSetVC(playerId: string) {
-    const newVC = vcId === playerId ? "" : playerId;
-    setVcId(newVC);
-    setSquad({ playerIds: localIds, captainId, viceCaptainId: newVC });
-    persistSquad(localIds, captainId, newVC);
+    setSquad({ playerIds: localIds, captainId: newCap, viceCaptainId: "" });
+    persistSquad(localIds, newCap);
     setActionSlot(null);
   }
   function startSwap(slotIdx: number) { setActionSlot(null); setSwapFrom(slotIdx); }
@@ -340,24 +313,22 @@ export default function FantasyPage() {
     <div className="relative flex flex-col h-full bg-[#f5f7fa] overflow-hidden">
 
       {/* ── Header ── */}
-      <div className="bg-[#080d18] px-5 pt-5 pb-4 shrink-0">
-        <div className="flex items-center justify-between mb-4">
-          <div className="flex items-center gap-3">
-            <div
-              className="w-11 h-11 rounded-xl font-heading text-base flex items-center justify-center text-[#080d18]"
-              style={{ backgroundColor: user.avatarColor }}
-            >
-              {user.name.slice(0, 2).toUpperCase()}
-            </div>
-            <div>
-              <p className="font-heading text-white text-[16px] uppercase leading-none">{user.teamName}</p>
-              <p className="text-gray-500 text-[10px] mt-0.5">{user.name}</p>
-            </div>
+      <div className="bg-[#080d18] px-4 py-2 shrink-0 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <div
+            className="w-7 h-7 rounded-lg font-heading text-[10px] flex items-center justify-center text-[#080d18]"
+            style={{ backgroundColor: user.avatarColor }}
+          >
+            {user.name.slice(0, 2).toUpperCase()}
           </div>
-          <button onClick={logout} className="text-gray-600 text-[10px] uppercase tracking-wide border border-gray-800 rounded-lg px-2.5 py-1">
-            Logout
-          </button>
+          <div>
+            <p className="font-heading text-white text-[11px] uppercase leading-none">{user.teamName}</p>
+            <p className="text-gray-500 text-[9px]">{user.name}</p>
+          </div>
         </div>
+        <button onClick={logout} className="text-gray-600 text-[9px] uppercase tracking-wide border border-gray-800 rounded-md px-2 py-0.5">
+          Logout
+        </button>
       </div>
 
       {/* ── Tab bar ── */}
@@ -384,27 +355,26 @@ export default function FantasyPage() {
         {/* ── MY TEAM ── */}
         {tab === "MY TEAM" && (
           <div className="pb-8">
-            {/* GW navigator + stats */}
-            {(() => {
+            {/* GW navigator + stats — only shown when fantasy is live */}
+            {FANTASY_LIVE ? (() => {
               const gwData = GW_HISTORY.find((g) => g.gw === viewGW) ?? GW_HISTORY[GW_HISTORY.length - 1];
               const isLive = viewGW === CURRENT_GW;
               return (
-                <div className="bg-[#080d18] px-4 pt-3 pb-4">
-                  {/* GW row */}
-                  <div className="flex items-center justify-between mb-3">
+                <div className="bg-[#080d18] px-4 pt-2 pb-2">
+                  <div className="flex items-center justify-between mb-1.5">
                     <button
                       onClick={() => setViewGW((g) => Math.max(1, g - 1))}
                       disabled={viewGW === 1}
-                      className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center disabled:opacity-30 transition-opacity"
+                      className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center disabled:opacity-30 transition-opacity"
                     >
-                      <ChevronLeft size={16} className="text-white" />
+                      <ChevronLeft size={12} className="text-white" />
                     </button>
-                    <div className="flex items-center gap-2">
-                      <span className="font-heading text-white text-[14px] uppercase tracking-wider">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-heading text-white text-[11px] uppercase tracking-wider">
                         Gameweek {viewGW}
                       </span>
                       {isLive && (
-                        <span className="bg-[#C7FF00]/15 border border-[#C7FF00]/30 text-[#C7FF00] text-[8px] font-bold uppercase tracking-wider rounded-full px-2 py-0.5">
+                        <span className="bg-[#C7FF00]/15 border border-[#C7FF00]/30 text-[#C7FF00] text-[7px] font-bold uppercase tracking-wider rounded-full px-1.5 py-0.5">
                           Live
                         </span>
                       )}
@@ -412,27 +382,47 @@ export default function FantasyPage() {
                     <button
                       onClick={() => setViewGW((g) => Math.min(CURRENT_GW, g + 1))}
                       disabled={viewGW === CURRENT_GW}
-                      className="w-8 h-8 rounded-lg bg-white/10 flex items-center justify-center disabled:opacity-30 transition-opacity"
+                      className="w-6 h-6 rounded-md bg-white/10 flex items-center justify-center disabled:opacity-30 transition-opacity"
                     >
-                      <ChevronRight size={16} className="text-white" />
+                      <ChevronRight size={12} className="text-white" />
                     </button>
                   </div>
-                  {/* Stats */}
-                  <div className="grid grid-cols-3 gap-2">
+                  <div className="grid grid-cols-3 gap-1.5">
                     {[
                       { label: "GW Points",  value: gwData.gwPoints.toString(),  color: "#C7FF00" },
                       { label: "Season Pts", value: gwData.seasonPts.toString(), color: "#C7FF00", large: true },
-                      { label: "Rank",       value: `#${gwData.rank}`,           color: "#00D9FF" },
+                      { label: "Rank",       value: gwData.rank > 0 ? `#${gwData.rank}` : "—", color: "#00D9FF" },
                     ].map(({ label, value, color, large }) => (
-                      <div key={label} className="bg-white/5 rounded-xl py-3 text-center">
-                        <p className={`font-heading leading-none ${large ? "text-3xl" : "text-xl"}`} style={{ color }}>{value}</p>
-                        <p className="text-gray-500 text-[9px] uppercase tracking-wide mt-1">{label}</p>
+                      <div key={label} className="bg-white/5 rounded-lg py-1 text-center">
+                        <p className={`font-heading leading-none ${large ? "text-xl" : "text-base"}`} style={{ color }}>{value}</p>
+                        <p className="text-gray-500 text-[7px] uppercase tracking-wide mt-0.5">{label}</p>
                       </div>
                     ))}
                   </div>
                 </div>
               );
-            })()}
+            })() : (
+              /* ── Registration phase banner ── */
+              <div className="bg-[#080d18] px-4 pt-3 pb-3">
+                <div className="rounded-xl border border-[#C7FF00]/20 bg-[#C7FF00]/5 px-4 py-3 flex items-center gap-3">
+                  <div className="w-9 h-9 rounded-full bg-[#C7FF00]/10 border border-[#C7FF00]/30 flex items-center justify-center shrink-0">
+                    <Trophy size={16} style={{ color: "#C7FF00" }} />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-heading text-[#C7FF00] text-[11px] uppercase tracking-wide leading-none">
+                      Squad Registered
+                    </p>
+                    <p className="text-gray-400 text-[10px] mt-1 leading-snug">
+                      Fantasy scoring begins from Gameweek 2 · Picks lock before GW2 kickoff
+                    </p>
+                  </div>
+                  <div className="shrink-0 text-right">
+                    <p className="font-heading text-white text-[13px] leading-none">GW2</p>
+                    <p className="text-gray-500 text-[8px] uppercase tracking-wide mt-0.5">Next up</p>
+                  </div>
+                </div>
+              </div>
+            )}
 
             {swapFrom !== null && (
               <div className="mx-4 mt-3 rounded-xl bg-[#00D9FF]/10 border border-[#00D9FF]/30 px-4 py-2.5 flex items-center justify-between">
@@ -448,37 +438,53 @@ export default function FantasyPage() {
               </div>
             )}
 
-            {/* Pitch */}
-            <div className="mx-4 mt-3 rounded-2xl overflow-hidden relative" style={{ background: "linear-gradient(175deg, #1e8c35 0%, #166b28 50%, #1a7a30 100%)" }}>
-              <svg className="absolute inset-0 w-full h-full" viewBox="0 0 300 240" preserveAspectRatio="none">
-                {[0,1,2,3,4,5].map((i) => <rect key={i} x="0" y={i*40} width="300" height="20" fill="rgba(0,0,0,0.04)" />)}
-                <rect x="6"   y="6"   width="288" height="228" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
-                <line x1="6"  y1="120" x2="294"  y2="120"     stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
-                <circle cx="150" cy="120" r="30" fill="none"   stroke="rgba(255,255,255,0.2)"  strokeWidth="1" />
-                <circle cx="150" cy="120" r="2"  fill="rgba(255,255,255,0.3)" />
-                <rect x="88"  y="6"   width="124" height="40"  fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
-                <rect x="112" y="6"   width="76"  height="18"  fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
-                <rect x="88"  y="194" width="124" height="40"  fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
-                <rect x="112" y="216" width="76"  height="18"  fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
-                <rect x="6"   y="68"  width="12"  height="104" rx="2" fill="rgba(8,13,24,0.82)" />
-                <text transform="rotate(-90 12 120)" x="12" y="120" textAnchor="middle" fontSize="5" fill="#C7FF00" fontFamily="Anton,sans-serif" letterSpacing="1.2">LA PERFUME</text>
-                <rect x="282" y="68"  width="12"  height="104" rx="2" fill="rgba(8,13,24,0.82)" />
-                <text transform="rotate(90 288 120)" x="288" y="120" textAnchor="middle" fontSize="5" fill="#C7FF00" fontFamily="Anton,sans-serif" letterSpacing="1.2">LA PERFUME</text>
+            {/* Pitch — fixed aspect ratio so GK row is always visible */}
+            <div className="mx-4 mt-3 rounded-2xl overflow-hidden relative" style={{ background: "linear-gradient(180deg, #145c22 0%, #1a7a30 45%, #22a03c 100%)", aspectRatio: "300/270" }}>
+              <svg className="absolute inset-0 w-full h-full" viewBox="0 0 300 270" preserveAspectRatio="none">
+                {/* Alternating grass stripes */}
+                {[0,1,2,3,4,5,6].map(i => <rect key={i} x="0" y={i*38} width="300" height="19" fill={i%2===0 ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.02)"} />)}
+                {/* Top gradient overlay for depth */}
+                <defs>
+                  <linearGradient id="depthGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="rgba(0,0,0,0.25)" />
+                    <stop offset="50%" stopColor="rgba(0,0,0,0)" />
+                    <stop offset="100%" stopColor="rgba(255,255,255,0.06)" />
+                  </linearGradient>
+                </defs>
+                <rect x="0" y="0" width="300" height="270" fill="url(#depthGrad)" />
+                {/* Boundary */}
+                <rect x="6" y="6" width="288" height="258" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
+                {/* Centre line */}
+                <line x1="6" y1="135" x2="294" y2="135" stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
+                {/* Centre circle */}
+                <circle cx="150" cy="135" r="32" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
+                <circle cx="150" cy="135" r="2.5" fill="rgba(255,255,255,0.4)" />
+                {/* Top penalty box */}
+                <rect x="84" y="6" width="132" height="44" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1" />
+                <rect x="108" y="6" width="84" height="20" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+                {/* Bottom penalty box */}
+                <rect x="84" y="220" width="132" height="44" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1" />
+                <rect x="108" y="250" width="84" height="20" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+                {/* La Perfume boards */}
+                <rect x="6" y="78" width="12" height="114" rx="2" fill="rgba(8,13,24,0.85)" />
+                <text transform="rotate(-90 12 135)" x="12" y="135" textAnchor="middle" fontSize="5" fill="#C7FF00" fontFamily="Anton,sans-serif" letterSpacing="1.2">LA PERFUME</text>
+                <rect x="282" y="78" width="12" height="114" rx="2" fill="rgba(8,13,24,0.85)" />
+                <text transform="rotate(90 288 135)" x="288" y="135" textAnchor="middle" fontSize="5" fill="#C7FF00" fontFamily="Anton,sans-serif" letterSpacing="1.2">LA PERFUME</text>
               </svg>
-              <div className="relative z-10 pt-8 pb-10 px-2">
-                <div className="flex justify-around mb-6">
+              <div className="absolute inset-0 z-10">
+                <div className="absolute w-full flex justify-around px-2" style={{ top: "4%" }}>
                   {starters.filter((s) => s.pos === "FWD").map((s) => (
-                    <ViewSlot key={s.index} slotIdx={s.index} playerId={localIds[s.index]} captainId={captainId} vcId={vcId} swapFrom={swapFrom} onTap={() => handleSlotTap(s.index)} onPitch />
+                    <ViewSlot key={s.index} slotIdx={s.index} playerId={localIds[s.index]} captainId={captainId} swapFrom={swapFrom} onTap={() => handleSlotTap(s.index)} onPitch />
                   ))}
                 </div>
-                <div className="flex justify-around mb-6">
+                <div className="absolute w-full flex justify-around px-2" style={{ top: "38%" }}>
                   {starters.filter((s) => s.pos === "DEF").map((s) => (
-                    <ViewSlot key={s.index} slotIdx={s.index} playerId={localIds[s.index]} captainId={captainId} vcId={vcId} swapFrom={swapFrom} onTap={() => handleSlotTap(s.index)} onPitch />
+                    <ViewSlot key={s.index} slotIdx={s.index} playerId={localIds[s.index]} captainId={captainId} swapFrom={swapFrom} onTap={() => handleSlotTap(s.index)} onPitch />
                   ))}
                 </div>
-                <div className="flex justify-center">
+                <div className="absolute w-full flex justify-center" style={{ top: "70%" }}>
                   {starters.filter((s) => s.pos === "GK").map((s) => (
-                    <ViewSlot key={s.index} slotIdx={s.index} playerId={localIds[s.index]} captainId={captainId} vcId={vcId} swapFrom={swapFrom} onTap={() => handleSlotTap(s.index)} onPitch />
+                    <ViewSlot key={s.index} slotIdx={s.index} playerId={localIds[s.index]} captainId={captainId} swapFrom={swapFrom} onTap={() => handleSlotTap(s.index)} onPitch />
                   ))}
                 </div>
               </div>
@@ -486,16 +492,13 @@ export default function FantasyPage() {
 
             {/* Subs bench */}
             <div className="mx-4 mt-2 bg-white rounded-2xl border border-gray-100 px-4 pt-2.5 pb-3">
-              <div className="flex items-center justify-between mb-2.5">
-                <div className="flex items-center gap-2">
-                  <div className="w-1 h-4 rounded-full bg-gray-300" />
-                  <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-gray-400">Substitutes</p>
-                </div>
-                <Link href="/fantasy/onboard" className="text-[10px] font-bold text-[#00D9FF] uppercase tracking-wide">Edit Squad →</Link>
+              <div className="flex items-center gap-2 mb-2.5">
+                <div className="w-1 h-4 rounded-full bg-gray-300" />
+                <p className="text-[9px] font-bold uppercase tracking-[0.18em] text-gray-400">Substitutes</p>
               </div>
               <div className="flex justify-around">
                 {subs.map((s) => (
-                  <ViewSlot key={s.index} slotIdx={s.index} playerId={localIds[s.index]} captainId={captainId} vcId={vcId} swapFrom={swapFrom} onTap={() => handleSlotTap(s.index)} onPitch={false} />
+                  <ViewSlot key={s.index} slotIdx={s.index} playerId={localIds[s.index]} captainId={captainId} swapFrom={swapFrom} onTap={() => handleSlotTap(s.index)} onPitch={false} />
                 ))}
               </div>
             </div>
@@ -508,7 +511,7 @@ export default function FantasyPage() {
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[9px] text-gray-500 uppercase tracking-wide">Captain · 2× Points</p>
+                  <p className="text-[9px] text-gray-500 uppercase tracking-wide">{FANTASY_LIVE ? "Captain · 2× Points" : "Captain"}</p>
                   <p className="font-heading text-navy text-[14px] uppercase leading-none">{captainPlayer.name}</p>
                 </div>
                 <div className="w-7 h-7 rounded-full bg-[#C7FF00] flex items-center justify-center shrink-0">
@@ -517,15 +520,6 @@ export default function FantasyPage() {
               </div>
             )}
 
-            <div className="mx-4 mt-3 rounded-xl border border-dashed border-gray-200 px-4 py-3 flex items-center justify-between">
-              <div>
-                <p className="text-navy text-[12px] font-semibold">Edit your squad</p>
-                <p className="text-gray-400 text-[10px] mt-0.5">Tap a player to swap starters/bench</p>
-              </div>
-              <Link href="/fantasy/onboard" className="text-[#00D9FF] text-[10px] font-bold uppercase tracking-wide flex items-center gap-1">
-                Edit <ChevronRight size={12} />
-              </Link>
-            </div>
           </div>
         )}
 
@@ -551,8 +545,8 @@ export default function FantasyPage() {
             <div className="px-4 mt-4">
               <div className="flex items-center mb-2 px-1">
                 <span className="flex-1 text-[9px] font-bold text-gray-400 uppercase">Player</span>
-                <span className="w-7 text-center text-[9px] font-bold text-gray-400">G</span>
-                <span className="w-7 text-center text-[9px] font-bold text-[#00D9FF]">A</span>
+                <span className="w-7 flex justify-center"><GoalIcon size={12} /></span>
+                <span className="w-7 flex justify-center"><AssistIcon size={12} /></span>
                 <span className="w-7 text-center text-[9px] font-bold text-[#00D9FF]">CS</span>
                 <span className="w-10 text-right text-[9px] font-bold text-gray-400">PTS</span>
               </div>
@@ -563,7 +557,6 @@ export default function FantasyPage() {
                 .map((p) => {
                   const team  = getTeam(p!.teamId);
                   const isCap = p!.id === captainId;
-                  const isVC  = p!.id === vcId && !isCap;
                   const slot  = SLOTS.find((s) => localIds[s.index] === p!.id);
                   const isSub = slot ? !slot.isStarter : false;
                   return (
@@ -575,13 +568,18 @@ export default function FantasyPage() {
                         <div className="flex items-center gap-1.5">
                           <p className="text-navy font-semibold text-[12px] leading-none truncate">{p!.name}</p>
                           {isCap && <span className="font-heading text-[7px] text-[#080d18] bg-[#C7FF00] rounded px-1 py-0.5 leading-none">C</span>}
-                          {isVC  && <span className="font-heading text-[7px] text-[#080d18] bg-[#00D9FF] rounded px-1 py-0.5 leading-none">V</span>}
                           {isSub && <span className="text-[7px] text-gray-400 border border-gray-200 rounded px-1 leading-none py-0.5">SUB</span>}
                         </div>
                         <p className="text-gray-400 text-[9px] mt-0.5">{team?.shortName} · {p!.position}</p>
                       </div>
-                      <span className="w-7 text-center font-heading text-navy text-[12px]">{p!.goals}</span>
-                      <span className="w-7 text-center font-heading text-[#00D9FF] text-[12px]">{p!.assists}</span>
+                      <span className="w-7 flex items-center justify-center gap-1">
+                        <GoalIcon size={11} />
+                        <span className="font-heading text-navy text-[11px]">{p!.goals}</span>
+                      </span>
+                      <span className="w-7 flex items-center justify-center gap-1">
+                        <AssistIcon size={11} />
+                        <span className="font-heading text-navy text-[11px]">{p!.assists}</span>
+                      </span>
                       <span className="w-7 text-center font-heading text-[#00D9FF] text-[12px]">
                         {(p!.position === "GK" || p!.position === "DEF") ? p!.cleanSheets : "—"}
                       </span>
@@ -680,7 +678,6 @@ export default function FantasyPage() {
         const team  = p ? getTeam(p.teamId) : null;
         const slot  = SLOTS[actionSlot];
         const isCap = pid === captainId;
-        const isVC  = pid === vcId;
         const hasSwapTarget = SLOTS.some((s) => s.index !== actionSlot && s.pos === slot.pos && s.isStarter !== slot.isStarter && !!localIds[s.index]);
         return (
           <div className="absolute inset-0 bg-black/40 z-40 flex flex-col justify-end" onClick={() => setActionSlot(null)}>
@@ -704,26 +701,15 @@ export default function FantasyPage() {
                   {isCap && <span className="ml-auto text-[10px] text-[#C7FF00] font-bold">Active</span>}
                 </button>
               )}
-              {slot.isStarter && !isCap && (
-                <button onClick={() => handleSetVC(pid)} className="w-full flex items-center gap-3 py-3.5 border-b border-gray-100">
-                  <Star size={16} style={{ color: isVC ? "#00D9FF" : "#9ca3af" }} />
-                  <span className="text-navy font-semibold text-[14px]">{isVC ? "Remove Vice Captain" : "Make Vice Captain"}</span>
-                  {isVC && <span className="ml-auto text-[10px] text-[#00D9FF] font-bold">Active</span>}
-                </button>
-              )}
               {hasSwapTarget && (
                 <button onClick={() => startSwap(actionSlot)} className="w-full flex items-center gap-3 py-3.5 border-b border-gray-100">
                   <ArrowLeftRight size={16} className="text-gray-400" />
                   <span className="text-navy font-semibold text-[14px]">{slot.isStarter ? "Swap with Bench" : "Move to Starting XI"}</span>
                 </button>
               )}
-              <Link href={`/fantasy/player/${pid}`} onClick={() => setActionSlot(null)} className="w-full flex items-center gap-3 py-3.5 border-b border-gray-100">
+              <Link href={`/fantasy/player/${pid}`} onClick={() => setActionSlot(null)} className="w-full flex items-center gap-3 py-3.5">
                 <ChevronRight size={16} className="text-gray-400" />
                 <span className="text-navy font-semibold text-[14px]">View Profile</span>
-              </Link>
-              <Link href="/fantasy/onboard" onClick={() => setActionSlot(null)} className="w-full flex items-center gap-3 py-3.5">
-                <RefreshCw size={16} className="text-gray-400" />
-                <span className="text-gray-500 font-semibold text-[14px]">Edit Full Squad</span>
               </Link>
             </div>
           </div>
@@ -763,8 +749,8 @@ export default function FantasyPage() {
               </div>
               <div className="grid grid-cols-3 gap-2">
                 {[
-                  { label: "GW Points",  value: entry.gwPoints.toString(), color: "#C7FF00" },
-                  { label: "Season Pts", value: entry.totalPoints.toString(), color: "#C7FF00" },
+                  { label: "GW Points",  value: (entry.gwPoints ?? 0).toString(), color: "#C7FF00" },
+                  { label: "Season Pts", value: (entry.totalPoints ?? 0).toString(), color: "#C7FF00" },
                   { label: "Rank",       value: `#${entry.rank}`,           color: "#00D9FF" },
                 ].map(({ label, value, color }) => (
                   <div key={label} className="bg-white/5 rounded-xl py-2.5 text-center">
@@ -778,7 +764,7 @@ export default function FantasyPage() {
             {/* Pitch + bench */}
             <div className="flex-1 overflow-y-auto pb-6">
               {/* Pitch */}
-              <div className="mx-4 mt-3 rounded-2xl overflow-hidden relative" style={{ background: "linear-gradient(175deg, #1e8c35 0%, #166b28 50%, #1a7a30 100%)" }}>
+              <div className="mx-4 mt-3 rounded-2xl overflow-hidden relative" style={{ background: "linear-gradient(180deg, #145c22 0%, #1a7a30 45%, #22a03c 100%)", aspectRatio: "300/270" }}>
                 <svg className="absolute inset-0 w-full h-full" viewBox="0 0 300 240" preserveAspectRatio="none">
                   {[0,1,2,3,4,5].map((i) => <rect key={i} x="0" y={i*40} width="300" height="20" fill="rgba(0,0,0,0.04)" />)}
                   <rect x="6"   y="6"   width="288" height="228" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
@@ -794,20 +780,20 @@ export default function FantasyPage() {
                   <rect x="282" y="68"  width="12"  height="104" rx="2" fill="rgba(8,13,24,0.82)" />
                   <text transform="rotate(90 288 120)" x="288" y="120" textAnchor="middle" fontSize="5" fill="#C7FF00" fontFamily="Anton,sans-serif" letterSpacing="1.2">LA PERFUME</text>
                 </svg>
-                <div className="relative z-10 pt-8 pb-10 px-2">
-                  <div className="flex justify-around mb-6">
+                <div className="absolute inset-0 z-10">
+                  <div className="absolute w-full flex justify-around px-2" style={{ top: "6%" }}>
                     {eStarters.filter((s) => s.pos === "FWD").map((s) => (
-                      <ViewSlot key={s.index} slotIdx={s.index} playerId={entry.playerIds[s.index] ?? ""} captainId={entry.captainId} vcId="" swapFrom={null} onTap={() => {}} onPitch />
+                      <ViewSlot key={s.index} slotIdx={s.index} playerId={entry.playerIds[s.index] ?? ""} captainId={entry.captainId} swapFrom={null} onTap={() => {}} onPitch />
                     ))}
                   </div>
-                  <div className="flex justify-around mb-6">
+                  <div className="absolute w-full flex justify-around px-2" style={{ top: "42%" }}>
                     {eStarters.filter((s) => s.pos === "DEF").map((s) => (
-                      <ViewSlot key={s.index} slotIdx={s.index} playerId={entry.playerIds[s.index] ?? ""} captainId={entry.captainId} vcId="" swapFrom={null} onTap={() => {}} onPitch />
+                      <ViewSlot key={s.index} slotIdx={s.index} playerId={entry.playerIds[s.index] ?? ""} captainId={entry.captainId} swapFrom={null} onTap={() => {}} onPitch />
                     ))}
                   </div>
-                  <div className="flex justify-center">
+                  <div className="absolute w-full flex justify-center" style={{ top: "74%" }}>
                     {eStarters.filter((s) => s.pos === "GK").map((s) => (
-                      <ViewSlot key={s.index} slotIdx={s.index} playerId={entry.playerIds[s.index] ?? ""} captainId={entry.captainId} vcId="" swapFrom={null} onTap={() => {}} onPitch />
+                      <ViewSlot key={s.index} slotIdx={s.index} playerId={entry.playerIds[s.index] ?? ""} captainId={entry.captainId} swapFrom={null} onTap={() => {}} onPitch />
                     ))}
                   </div>
                 </div>
@@ -821,7 +807,7 @@ export default function FantasyPage() {
                 </div>
                 <div className="flex justify-around">
                   {eSubs.map((s) => (
-                    <ViewSlot key={s.index} slotIdx={s.index} playerId={entry.playerIds[s.index] ?? ""} captainId={entry.captainId} vcId="" swapFrom={null} onTap={() => {}} onPitch={false} />
+                    <ViewSlot key={s.index} slotIdx={s.index} playerId={entry.playerIds[s.index] ?? ""} captainId={entry.captainId} swapFrom={null} onTap={() => {}} onPitch={false} />
                   ))}
                 </div>
               </div>
@@ -833,7 +819,7 @@ export default function FantasyPage() {
                     {capTeam?.badgeUrl && <Image src={capTeam.badgeUrl} alt="" fill className="object-contain" />}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-[9px] text-gray-500 uppercase tracking-wide">Captain · 2× Points</p>
+                    <p className="text-[9px] text-gray-500 uppercase tracking-wide">{FANTASY_LIVE ? "Captain · 2× Points" : "Captain"}</p>
                     <p className="font-heading text-navy text-[14px] uppercase leading-none">{capPlayer.name}</p>
                   </div>
                   <div className="w-7 h-7 rounded-full bg-[#C7FF00] flex items-center justify-center shrink-0">

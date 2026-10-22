@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { connectDB } from "@/lib/mongodb";
 import { FantasyUserModel } from "@/lib/models";
 import { ok, fail, notFound } from "@/lib/api";
+import { FREE_TRANSFERS_PER_GW } from "@/lib/fantasyConfig";
 
 export async function GET(req: NextRequest) {
   const userId = req.nextUrl.searchParams.get("userId");
@@ -39,7 +40,7 @@ export async function POST(req: NextRequest) {
         ...(avatarColor && { avatarColor }),
         squad:              { playerIds, captainId: captainId ?? "", viceCaptainId: viceCaptainId ?? "" },
         onboardingComplete: true,
-        freeTransfers:      1,
+        freeTransfers:      FREE_TRANSFERS_PER_GW,
       },
     },
     { new: true, upsert: true },

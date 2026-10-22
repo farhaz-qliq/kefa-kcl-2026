@@ -5,9 +5,9 @@ export const MOCK_BANNERS: Banner[] = [
     id: "b1",
     title: "PICK YOUR\nDREAM TEAM",
     subtitle: "7S FOOTBALL FANTASY LEAGUE",
-    ctaLabel: "COMING SOON",
+    ctaLabel: "BUILD YOUR TEAM",
     ctaHref: "/fantasy",
-    imageUrl: "/banner-dream-team.png",
+    imageUrl: "/la-perfume-fantasy.png",
     season: "2026",
   },
   {

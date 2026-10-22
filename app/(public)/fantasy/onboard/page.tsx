@@ -205,40 +205,36 @@ function PlayerSlot({ slot, playerId, isCaptain, onTap, onPitch = true }: Player
   const player = playerId ? MOCK_FANTASY_PLAYERS.find((p) => p.id === playerId) : null;
   const team   = player ? getTeam(player.teamId) : null;
   const shirtColor = team?.primaryColor ?? (onPitch ? "rgba(255,255,255,0.15)" : "#e5e7eb");
-  const nameColor  = onPitch ? "text-white" : "text-navy";
-  const posColor   = onPitch ? "text-white/50" : "text-gray-400";
 
   return (
-    <button onClick={onTap} className="flex flex-col items-center gap-0.5 relative" style={{ minWidth: 52 }}>
+    <button onClick={onTap} className="flex flex-col items-center relative" style={{ width: 58, minWidth: 58 }}>
       <div className="relative">
         {player ? <Shirt color={shirtColor} /> : <EmptyShirt onPitch={onPitch} />}
-
-        {/* Badge overlay on shirt chest */}
         {player && team?.badgeUrl && (
-          <div className="absolute" style={{ top: 18, left: "50%", transform: "translateX(-50%)", width: 20, height: 20 }}>
+          <div className="absolute" style={{ top: 16, left: "50%", transform: "translateX(-50%)", width: 18, height: 18 }}>
             <Image src={team.badgeUrl} alt={team.shortName} fill className="object-contain drop-shadow-sm" />
           </div>
         )}
-
-        {/* Captain crown */}
         {isCaptain && (
-          <div className="absolute -top-1.5 left-1/2 -translate-x-1/2 bg-[#C7FF00] rounded-full w-5 h-5 flex items-center justify-center shadow">
-            <Crown size={10} color="#080d18" />
+          <div className="absolute -top-1 -right-1 w-[18px] h-[18px] rounded-full bg-[#080d18] border-2 border-[#C7FF00] flex items-center justify-center shadow-md">
+            <span className="font-heading text-[#C7FF00] text-[8px] leading-none">C</span>
           </div>
         )}
       </div>
-
-      {player ? (
-        <>
-          <span className={cn("text-[9px] font-bold leading-none text-center max-w-[60px] truncate mt-0.5", nameColor)}>
-            {player.name.split(" ")[0]}
-          </span>
-          <span className={cn("text-[8px] leading-none", posColor)}>
-            {team?.shortName}
-          </span>
-        </>
-      ) : (
-        <span className={cn("text-[8px] font-bold uppercase mt-0.5", posColor)}>{slot.pos}</span>
+      {/* FPL-style name pill */}
+      <div className="w-full text-center rounded-[3px] px-1 mt-0.5"
+        style={{ backgroundColor: onPitch ? (isCaptain ? "#C7FF00" : "rgba(8,13,24,0.88)") : "#d1d5db", paddingTop: 2, paddingBottom: 2 }}>
+        <span className="text-[8px] font-bold leading-none block truncate"
+          style={{ color: (isCaptain && onPitch) ? "#080d18" : onPitch ? "#ffffff" : "#374151" }}>
+          {player ? player.name.split(" ")[0] : slot.pos}
+        </span>
+      </div>
+      {/* Team short name */}
+      {player && (
+        <div className="w-full text-center rounded-[3px] px-1 mt-px"
+          style={{ backgroundColor: "rgba(255,255,255,0.15)", paddingTop: 1, paddingBottom: 1 }}>
+          <span className="text-[7px] font-bold text-white/70 leading-none">{team?.shortName}</span>
+        </div>
       )}
     </button>
   );
@@ -251,7 +247,9 @@ function StepSquad({ onNext, onBack }: { onNext: () => void; onBack: () => void 
   const [captain,  setCaptain]  = useState<number | null>(null); // slot index
   const [picker,   setPicker]   = useState<number | null>(null); // slot index opening picker
   const [action,   setAction]   = useState<number | null>(null); // slot index for action sheet
-  const [search,   setSearch]   = useState("");
+  const [search,      setSearch]      = useState("");
+  const [filterTeam,  setFilterTeam]  = useState<string | null>(null);
+  const [sortBy,      setSortBy]      = useState<"pts" | "price_asc" | "price_desc">("pts");
 
   const spent = squad.reduce((acc, id) => {
     if (!id) return acc;
@@ -282,13 +280,18 @@ function StepSquad({ onNext, onBack }: { onNext: () => void; onBack: () => void 
         if (p.position !== pickerSlot.pos) return false;
         if (usedIds.includes(p.id)) return false;
         if (search && !p.name.toLowerCase().includes(search.toLowerCase())) return false;
+        if (filterTeam && p.teamId !== filterTeam) return false;
         const teamCount = usedIds.filter((id) => MOCK_FANTASY_PLAYERS.find((x) => x.id === id)?.teamId === p.teamId).length;
-        if (teamCount >= 3) return false;
+        if (teamCount >= 2) return false;
         if (spent + p.price > FANTASY_BUDGET + 0.01) return false;
         return true;
       })
-      .sort((a, b) => b.totalPoints - a.totalPoints);
-  }, [pickerSlot, squad, search, spent]);
+      .sort((a, b) =>
+        sortBy === "pts"        ? b.totalPoints - a.totalPoints :
+        sortBy === "price_asc"  ? a.price - b.price :
+                                  b.price - a.price
+      );
+  }, [pickerSlot, squad, search, filterTeam, sortBy, spent]);
 
   function pickPlayer(playerId: string) {
     if (picker === null) return;
@@ -297,6 +300,8 @@ function StepSquad({ onNext, onBack }: { onNext: () => void; onBack: () => void 
     setSquad(next);
     setPicker(null);
     setSearch("");
+    setFilterTeam(null);
+    setSortBy("pts");
   }
 
   function removePlayer(slotIdx: number) {
@@ -330,7 +335,7 @@ function StepSquad({ onNext, onBack }: { onNext: () => void; onBack: () => void 
   const subs     = SLOTS.filter((s) => !s.isStarter);
 
   return (
-    <div className="flex flex-col h-full bg-[#f5f7fa]">
+    <div className="flex flex-col h-full bg-[#f5f7fa] overflow-y-auto">
       {/* Budget bar */}
       <div className="px-4 py-3 bg-white border-b border-gray-100">
         <div className="flex items-center justify-between mb-1">
@@ -353,52 +358,43 @@ function StepSquad({ onNext, onBack }: { onNext: () => void; onBack: () => void 
         </div>
       </div>
 
-      {/* Pitch */}
-      <div className="mx-4 mt-2 rounded-2xl overflow-hidden relative" style={{ background: "linear-gradient(175deg, #1e8c35 0%, #166b28 50%, #1a7a30 100%)" }}>
-        {/* Pitch stripe pattern */}
-        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 300 240" preserveAspectRatio="none">
-          {/* Alternating grass stripes */}
-          {[0,1,2,3,4,5].map(i => (
-            <rect key={i} x="0" y={i*40} width="300" height="20" fill="rgba(0,0,0,0.04)" />
-          ))}
-          {/* Boundary */}
-          <rect x="6" y="6" width="288" height="228" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1.5" />
-          {/* Centre line */}
-          <line x1="6" y1="120" x2="294" y2="120" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
-          {/* Centre circle */}
-          <circle cx="150" cy="120" r="30" fill="none" stroke="rgba(255,255,255,0.2)" strokeWidth="1" />
-          <circle cx="150" cy="120" r="2" fill="rgba(255,255,255,0.3)" />
-          {/* Top penalty box */}
-          <rect x="88" y="6" width="124" height="40" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
-          <rect x="112" y="6" width="76" height="18" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
-          {/* Bottom penalty box */}
-          <rect x="88" y="194" width="124" height="40" fill="none" stroke="rgba(255,255,255,0.18)" strokeWidth="1" />
-          <rect x="112" y="216" width="76" height="18" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1" />
-
-          {/* ── La Perfume sideline ad boards (vertical) ── */}
-          <rect x="6" y="68" width="12" height="104" rx="2" fill="rgba(8,13,24,0.82)" />
-          <text transform="rotate(-90 12 120)" x="12" y="120" textAnchor="middle" fontSize="5" fill="#C7FF00" fontFamily="Anton,sans-serif" letterSpacing="1.2">LA PERFUME</text>
-
-          <rect x="282" y="68" width="12" height="104" rx="2" fill="rgba(8,13,24,0.82)" />
-          <text transform="rotate(90 288 120)" x="288" y="120" textAnchor="middle" fontSize="5" fill="#C7FF00" fontFamily="Anton,sans-serif" letterSpacing="1.2">LA PERFUME</text>
+      {/* Pitch — fixed aspect ratio, FPL-style 3D look */}
+      <div className="mx-4 mt-2 rounded-2xl overflow-hidden relative" style={{ background: "linear-gradient(180deg, #145c22 0%, #1a7a30 45%, #22a03c 100%)", aspectRatio: "300/270" }}>
+        <svg className="absolute inset-0 w-full h-full" viewBox="0 0 300 270" preserveAspectRatio="none">
+          {[0,1,2,3,4,5,6].map(i => <rect key={i} x="0" y={i*38} width="300" height="19" fill={i%2===0 ? "rgba(0,0,0,0.05)" : "rgba(255,255,255,0.02)"} />)}
+          <defs>
+            <linearGradient id="depthGradOb" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0%" stopColor="rgba(0,0,0,0.25)" />
+              <stop offset="50%" stopColor="rgba(0,0,0,0)" />
+              <stop offset="100%" stopColor="rgba(255,255,255,0.06)" />
+            </linearGradient>
+          </defs>
+          <rect x="0" y="0" width="300" height="270" fill="url(#depthGradOb)" />
+          <rect x="6" y="6" width="288" height="258" fill="none" stroke="rgba(255,255,255,0.3)" strokeWidth="1.5" />
+          <line x1="6" y1="135" x2="294" y2="135" stroke="rgba(255,255,255,0.3)" strokeWidth="1" />
+          <circle cx="150" cy="135" r="32" fill="none" stroke="rgba(255,255,255,0.25)" strokeWidth="1" />
+          <circle cx="150" cy="135" r="2.5" fill="rgba(255,255,255,0.4)" />
+          <rect x="84" y="6" width="132" height="44" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1" />
+          <rect x="108" y="6" width="84" height="20" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+          <rect x="84" y="220" width="132" height="44" fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="1" />
+          <rect x="108" y="250" width="84" height="20" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="1" />
+          <rect x="6" y="78" width="12" height="114" rx="2" fill="rgba(8,13,24,0.85)" />
+          <text transform="rotate(-90 12 135)" x="12" y="135" textAnchor="middle" fontSize="5" fill="#C7FF00" fontFamily="Anton,sans-serif" letterSpacing="1.2">LA PERFUME</text>
+          <rect x="282" y="78" width="12" height="114" rx="2" fill="rgba(8,13,24,0.85)" />
+          <text transform="rotate(90 288 135)" x="288" y="135" textAnchor="middle" fontSize="5" fill="#C7FF00" fontFamily="Anton,sans-serif" letterSpacing="1.2">LA PERFUME</text>
         </svg>
-
-        {/* Player positions */}
-        <div className="relative z-10 pt-8 pb-10 px-2">
-          {/* FWD row */}
-          <div className="flex justify-around mb-6">
+        <div className="absolute inset-0 z-10">
+          <div className="absolute w-full flex justify-around px-2" style={{ top: "4%" }}>
             {starters.filter(s => s.pos === "FWD").map((s) => (
               <PlayerSlot key={s.index} slot={s} playerId={squad[s.index]} isCaptain={captain === s.index} onTap={() => handleSlotTap(s.index)} onPitch />
             ))}
           </div>
-          {/* DEF row */}
-          <div className="flex justify-around mb-6">
+          <div className="absolute w-full flex justify-around px-2" style={{ top: "38%" }}>
             {starters.filter(s => s.pos === "DEF").map((s) => (
               <PlayerSlot key={s.index} slot={s} playerId={squad[s.index]} isCaptain={captain === s.index} onTap={() => handleSlotTap(s.index)} onPitch />
             ))}
           </div>
-          {/* GK row */}
-          <div className="flex justify-center">
+          <div className="absolute w-full flex justify-center" style={{ top: "70%" }}>
             {starters.filter(s => s.pos === "GK").map((s) => (
               <PlayerSlot key={s.index} slot={s} playerId={squad[s.index]} isCaptain={captain === s.index} onTap={() => handleSlotTap(s.index)} onPitch />
             ))}
@@ -482,12 +478,12 @@ function StepSquad({ onNext, onBack }: { onNext: () => void; onBack: () => void 
               <h3 className="font-heading text-[16px] text-navy uppercase">
                 Select {pickerSlot.pos} {pickerSlot.isStarter ? "" : "· Sub"}
               </h3>
-              <button onClick={() => { setPicker(null); setSearch(""); }} className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
+              <button onClick={() => { setPicker(null); setSearch(""); setFilterTeam(null); setSortBy("pts"); }} className="w-8 h-8 rounded-lg bg-gray-100 flex items-center justify-center">
                 <X size={15} />
               </button>
             </div>
             {/* Search */}
-            <div className="px-4 py-2 flex-shrink-0">
+            <div className="px-4 pt-2 pb-1 flex-shrink-0">
               <div className="flex items-center gap-2 bg-[#f5f7fa] rounded-xl px-3 py-2.5">
                 <Search size={13} className="text-gray-400" />
                 <input
@@ -496,8 +492,34 @@ function StepSquad({ onNext, onBack }: { onNext: () => void; onBack: () => void 
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                   className="flex-1 bg-transparent text-navy text-sm outline-none"
-                  autoFocus
                 />
+              </div>
+            </div>
+            {/* Sort + Team filter */}
+            <div className="flex-shrink-0 px-4 pb-2 space-y-1.5">
+              {/* Sort pills */}
+              <div className="flex gap-1.5">
+                {(["pts", "price_asc", "price_desc"] as const).map((s) => (
+                  <button key={s} onClick={() => setSortBy(s)}
+                    className={cn("px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border transition-colors",
+                      sortBy === s ? "bg-navy text-white border-navy" : "bg-white text-gray-500 border-gray-200"
+                    )}>
+                    {s === "pts" ? "Top Rated" : s === "price_asc" ? "Price ↑" : "Price ↓"}
+                  </button>
+                ))}
+              </div>
+              {/* Team chips */}
+              <div className="flex gap-1.5 overflow-x-auto pb-0.5 scrollbar-none">
+                <button onClick={() => setFilterTeam(null)}
+                  className={cn("px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border whitespace-nowrap transition-colors flex-shrink-0",
+                    !filterTeam ? "bg-[#C7FF00] text-navy border-[#C7FF00]" : "bg-white text-gray-500 border-gray-200"
+                  )}>All</button>
+                {MOCK_TEAMS.map((t) => (
+                  <button key={t.id} onClick={() => setFilterTeam(filterTeam === t.id ? null : t.id)}
+                    className={cn("px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-wide border whitespace-nowrap transition-colors flex-shrink-0",
+                      filterTeam === t.id ? "bg-[#C7FF00] text-navy border-[#C7FF00]" : "bg-white text-gray-500 border-gray-200"
+                    )}>{t.shortName}</button>
+                ))}
               </div>
             </div>
             {/* List */}
@@ -546,14 +568,18 @@ declare global {
 export default function OnboardPage() {
   const router = useRouter();
   const { isAuthenticated, setSquad } = useFantasyStore();
-  const [step,  setStep]  = useState(0);
-  const [saved, setSaved] = useState(false);
+  const [step,     setStep]     = useState(0);
+  const [saved,    setSaved]    = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => { setHydrated(true); }, []);
 
   useEffect(() => {
+    if (!hydrated) return;
     if (!isAuthenticated) router.replace("/fantasy/login");
-  }, [isAuthenticated, router]);
+  }, [hydrated, isAuthenticated, router]);
 
-  if (!isAuthenticated) return null;
+  if (!hydrated || !isAuthenticated) return null;
 
   async function finishOnboarding() {
     const data = window.__fantasySquadData;

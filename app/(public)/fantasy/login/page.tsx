@@ -84,7 +84,7 @@ export default function FantasyLoginPage() {
   return (
     <div className="min-h-full bg-[#080d18] flex flex-col">
       {/* Top section */}
-      <div className="flex flex-col items-center pt-14 pb-8 px-6">
+      <div className="flex flex-col items-center pt-8 pb-4 px-6">
         <div className="w-16 h-16 rounded-2xl bg-[#C7FF00]/10 border border-[#C7FF00]/20 flex items-center justify-center mb-4">
           <Sparkles size={28} style={{ color: "#C7FF00" }} />
         </div>
@@ -111,6 +111,7 @@ export default function FantasyLoginPage() {
                 onChange={(e) => { setEmail(e.target.value); setError(""); }}
                 className="flex-1 px-4 py-3.5 text-navy text-base bg-white outline-none"
                 onKeyDown={(e) => e.key === "Enter" && handleSendOTP()}
+                onFocus={(e) => setTimeout(() => e.target.scrollIntoView({ behavior: "smooth", block: "center" }), 300)}
                 autoComplete="email"
               />
             </div>

@@ -3,6 +3,7 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { FantasyState, FantasySquad } from "@/types/fantasy";
+import { isUnlimitedTransfers, FREE_TRANSFERS_PER_GW } from "@/lib/fantasyConfig";
 
 export const useFantasyStore = create<FantasyState>()(
   persist(
@@ -12,7 +13,7 @@ export const useFantasyStore = create<FantasyState>()(
       gwHistory: [],
       isAuthenticated: false,
       onboardingComplete: false,
-      freeTransfers: 1,
+      freeTransfers: FREE_TRANSFERS_PER_GW,
 
       login: (email) =>
         set((s) => ({
@@ -41,12 +42,12 @@ export const useFantasyStore = create<FantasyState>()(
           const viceCaptainId = s.squad.viceCaptainId === outId ? inId : s.squad.viceCaptainId;
           return {
             squad: { playerIds, captainId, viceCaptainId },
-            freeTransfers: Math.max(0, s.freeTransfers - 1),
+            freeTransfers: isUnlimitedTransfers ? s.freeTransfers : Math.max(0, s.freeTransfers - 1),
           };
         }),
 
       logout: () =>
-        set({ user: null, squad: null, gwHistory: [], isAuthenticated: false, onboardingComplete: false, freeTransfers: 1 }),
+        set({ user: null, squad: null, gwHistory: [], isAuthenticated: false, onboardingComplete: false, freeTransfers: FREE_TRANSFERS_PER_GW }),
 
       syncUser: (data) =>
         set({

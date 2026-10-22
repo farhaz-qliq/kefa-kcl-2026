@@ -21,8 +21,7 @@ const SLIDE_CONFIG = [
     bigEmoji: "🏆",
     features: [
       { Icon: Shield, text: "4 GROUPS · SEASON 6" },
-      { Icon: Users, text: "7-A-SIDE FORMAT" },
-      { Icon: Trophy, text: "KEFA KCL 2026" },
+      { Icon: Trophy, text: "ARKEY KCL 2026" },
     ],
   },
   {
@@ -77,8 +76,8 @@ export default function BannerSlider({ banners }: BannerSliderProps) {
             return (
               <div
                 key={banner.id}
-                className="flex-[0_0_83%] min-w-0 transition-all duration-300"
-                style={{ opacity: isActive ? 1 : 0.55, transform: isActive ? "scale(1)" : "scale(0.97)" }}
+                className="flex-[0_0_83%] min-w-0 transition-opacity duration-300"
+                style={{ opacity: isActive ? 1 : 0.55 }}
               >
                 <div className="rounded-2xl overflow-hidden shadow-2xl" style={{ height: "195px" }}>
                   {banner.imageUrl ? (
@@ -124,7 +123,7 @@ export default function BannerSlider({ banners }: BannerSliderProps) {
                         {/* Branding */}
                         <div className="flex items-center gap-1.5">
                           <div className="flex items-center gap-1 bg-white/10 rounded px-1.5 py-0.5">
-                            <span className="font-heading text-white text-[10px]">KEFA</span>
+                            <span className="font-heading text-white text-[10px]">ARKEY</span>
                             <span className="font-heading text-[#C7FF00] text-[10px]">KCL</span>
                             <span className="font-heading text-white text-[10px]">2026</span>
                           </div>

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { Sparkles, Users, Star, ChevronRight } from "lucide-react";
+import { Sparkles, Users, Star, ChevronRight, Trophy, Zap } from "lucide-react";
 
 export default function FantasyTeaser() {
   return (
@@ -25,14 +25,15 @@ export default function FantasyTeaser() {
             <Sparkles size={9} className="text-[#00D9FF]" />
             <span className="text-[#00D9FF] text-[10px] font-bold uppercase tracking-[0.15em]">Fantasy League</span>
           </div>
-          <span className="bg-[#C7FF00]/10 border border-[#C7FF00]/25 text-[#C7FF00] text-[9px] font-bold uppercase tracking-wider rounded-full px-2.5 py-1">
-            Coming Soon
-          </span>
+          <div className="flex items-center gap-1 bg-[#C7FF00]/15 border border-[#C7FF00]/40 rounded-full px-2.5 py-1">
+            <Zap size={8} className="text-[#C7FF00]" fill="#C7FF00" />
+            <span className="text-[#C7FF00] text-[9px] font-bold uppercase tracking-wider">Live Now</span>
+          </div>
         </div>
 
         {/* Headline */}
         <div className="relative z-10 leading-none mb-2">
-          <p className="font-heading text-[22px] text-white uppercase leading-none">PICK YOUR</p>
+          <p className="font-heading text-[22px] text-white uppercase leading-none">BUILD YOUR</p>
           <p
             className="font-heading text-[22px] uppercase leading-none"
             style={{ color: "#C7FF00", textShadow: "0 0 20px #C7FF0055" }}
@@ -42,21 +43,21 @@ export default function FantasyTeaser() {
         </div>
 
         <p className="relative z-10 text-gray-400 text-[11px] mb-2 leading-relaxed">
-          Draft from all 16 teams, assign your captain & climb the fantasy table.
+          Pick from all 16 teams, assign your captain & win prizes.
         </p>
 
-        {/* Feature chips — horizontal row */}
+        {/* Feature chips */}
         <div className="relative z-10 flex gap-2.5 mb-3">
           {[
-            { Icon: Users, label: "16 Teams" },
-            { Icon: Star, label: "Captains" },
-            { Icon: Sparkles, label: "Live Points" },
+            { Icon: Users,   label: "16 Teams" },
+            { Icon: Star,    label: "Captains" },
+            { Icon: Trophy,  label: "Win Prizes" },
           ].map(({ Icon, label }) => (
             <div
               key={label}
               className="flex items-center gap-1.5 bg-white/5 border border-white/10 rounded-lg px-2.5 py-1.5"
             >
-              <Icon size={10} className="text-[#00D9FF]" />
+              <Icon size={10} className="text-[#C7FF00]" />
               <span className="text-white/70 text-[9px] font-semibold uppercase tracking-wide">{label}</span>
             </div>
           ))}
@@ -65,11 +66,11 @@ export default function FantasyTeaser() {
         {/* CTA */}
         <Link
           href="/fantasy"
-          className="relative z-10 inline-flex items-center gap-2 rounded-full font-heading text-[10px] uppercase tracking-wider px-4 py-2 transition-opacity hover:opacity-90"
+          className="relative z-10 inline-flex items-center gap-2 rounded-full font-heading text-[10px] uppercase tracking-wider px-4 py-2 transition-opacity hover:opacity-90 active:scale-95"
           style={{ backgroundColor: "#C7FF00", color: "#080d18" }}
         >
           <Sparkles size={10} />
-          Register Interest
+          Build Your Team
           <ChevronRight size={10} />
         </Link>
       </div>

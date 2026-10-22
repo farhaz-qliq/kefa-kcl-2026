@@ -1,7 +1,9 @@
 import type { Team, Player, Group, Fixture, StandingRow, Banner, NewsItem, GroupName } from "@/types";
+import type { FantasyPlayer } from "@/types/fantasy";
 import { MOCK_TEAMS, MOCK_PLAYERS, MOCK_FIXTURES, MOCK_GROUPS, MOCK_BANNERS, MOCK_NEWS } from "@/mocks";
+import { MOCK_FANTASY_PLAYERS } from "@/mocks/fantasyPlayers";
 import { connectDB } from "./mongodb";
-import { TeamModel, PlayerModel, GroupModel, FixtureModel, BannerModel, NewsModel } from "./models";
+import { TeamModel, PlayerModel, GroupModel, FixtureModel, BannerModel, NewsModel, FantasyPlayerModel } from "./models";
 
 // ── Connection helper ──────────────────────────────────────────────────────
 
@@ -116,6 +118,14 @@ export async function getNews(): Promise<NewsItem[]> {
   return MOCK_NEWS;
 }
 
+export async function getNewsItem(id: string): Promise<NewsItem | null> {
+  if (await db()) {
+    const doc = await NewsModel.findById(id).lean();
+    return doc ? (withId(doc) as NewsItem) : null;
+  }
+  return MOCK_NEWS.find((n) => n.id === id) ?? null;
+}
+
 // ── Standings (computed, not stored) ──────────────────────────────────────
 
 export async function getStandings(groupId?: GroupName): Promise<Record<GroupName, StandingRow[]>> {
@@ -179,4 +189,23 @@ export async function getTopScorers(limit = 10): Promise<Player[]> {
     return docs.map(withId) as Player[];
   }
   return [...MOCK_PLAYERS].sort((a, b) => b.goals - a.goals).slice(0, limit);
+}
+
+export async function getTopAssists(limit = 10): Promise<Player[]> {
+  if (await db()) {
+    const docs = await PlayerModel.find({}).sort({ assists: -1 }).limit(limit).lean();
+    return docs.map(withId) as Player[];
+  }
+  return [...MOCK_PLAYERS].sort((a, b) => b.assists - a.assists).slice(0, limit);
+}
+
+export async function getTopCleanSheets(limit = 10): Promise<FantasyPlayer[]> {
+  if (await db()) {
+    const docs = await FantasyPlayerModel.find({ position: "GK" }).sort({ cleanSheets: -1 }).limit(limit).lean();
+    return docs.map(withId) as FantasyPlayer[];
+  }
+  return [...MOCK_FANTASY_PLAYERS]
+    .filter((p) => p.position === "GK")
+    .sort((a, b) => b.cleanSheets - a.cleanSheets)
+    .slice(0, limit);
 }

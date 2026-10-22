@@ -28,7 +28,7 @@ export default function TopNav() {
         </button>
 
         <div className="text-center leading-none">
-          <p className="font-heading text-2xl text-navy tracking-wide">KEFA</p>
+          <p className="font-heading text-2xl text-navy tracking-wide">ARKEY</p>
           <p className="text-[11px] font-semibold text-gray-400 tracking-[0.2em] uppercase -mt-0.5">KCL 2026</p>
         </div>
 
@@ -55,7 +55,7 @@ export default function TopNav() {
             {/* Branding */}
             <div className="flex items-center justify-between px-5 pt-8 pb-5 border-b border-white/10">
               <div>
-                <p className="font-heading text-[26px] text-white tracking-wide leading-none">KEFA</p>
+                <p className="font-heading text-[26px] text-white tracking-wide leading-none">ARKEY</p>
                 <p className="text-[#C7FF00] text-[10px] font-bold tracking-[0.3em] uppercase mt-1">KCL 2026</p>
               </div>
               <button

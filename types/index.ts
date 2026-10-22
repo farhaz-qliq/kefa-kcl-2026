@@ -79,6 +79,7 @@ export interface NewsItem {
   id: string;
   title: string;
   excerpt: string;
+  body?: string;
   imageUrl: string;
   publishedAt: string;
   season: Season;

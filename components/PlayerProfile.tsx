@@ -2,16 +2,22 @@
 
 import { useRouter } from "next/navigation";
 import Image from "next/image";
-import { ChevronLeft, TrendingUp, TrendingDown, Calendar, Target, Shuffle, Trophy, BarChart2, type LucideIcon } from "lucide-react";
-import { MOCK_TEAMS } from "@/mocks";
+import { ChevronLeft, Calendar, Target, Shuffle, Trophy, BarChart2, MapPin, type LucideIcon } from "lucide-react";
 import { cn } from "@/lib/utils";
-import type { Player, Team } from "@/types";
+import type { Player, Team, Fixture } from "@/types";
+import type { FantasyPlayer } from "@/types/fantasy";
 
-// ── Deterministic mock stats ───────────────────────────────────────────────────
+// ── Helpers ───────────────────────────────────────────────────────────────────
 function hash(s: string): number {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (Math.imul(31, h) + s.charCodeAt(i)) | 0;
   return Math.abs(h);
+}
+
+function fmtShortDate(iso: string) {
+  const [, m, d] = iso.split("-");
+  const months = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+  return `${months[parseInt(m)-1]} ${parseInt(d)}`;
 }
 
 function deriveStats(player: Player) {
@@ -26,34 +32,36 @@ function deriveStats(player: Player) {
   const height     = 169 + (h % 27);
   const weight     = 65 + (h % 25);
   const foot       = h % 5 === 0 ? "Left" : "Right";
-  const form       = Array.from({ length: 5 }, (_, i) => 1 + ((h * (i * 4 + 7)) % 11));
   const shotsPerMatch = Math.round((1.2 + (h % 25) / 10) * 10) / 10;
   const shotAcc    = 42 + (h % 38);
   const bigChances = 2 + (h % 10);
-  return { matches, points, avgPoints, price, priceDelta, selectedBy, age, height, weight, foot, form, shotsPerMatch, shotAcc, bigChances };
+  return { matches, points, avgPoints, price, priceDelta, selectedBy, age, height, weight, foot, shotsPerMatch, shotAcc, bigChances };
 }
 
-function genRecentMatches(player: Player) {
-  const h = hash(player.id);
-  const opponents = MOCK_TEAMS.filter((t) => t.id !== player.teamId);
-  return Array.from({ length: 5 }, (_, i) => {
-    const opp      = opponents[(h + i * 13) % opponents.length];
-    const hGoals   = (h + i * 7) % 4;
-    const aGoals   = (h + i * 11) % 3;
-    const isHome   = (h + i) % 2 === 0;
-    const myGoals  = isHome ? hGoals : aGoals;
-    const oppGoals = isHome ? aGoals : hGoals;
-    const result: "W" | "D" | "L" =
-      myGoals > oppGoals ? "W" : myGoals === oppGoals ? "D" : "L";
-    const goals   = result !== "L" ? (h + i * 5) % 2 : 0;
-    const assists = goals === 0 && result === "W" ? (h + i * 3) % 2 : 0;
-    const pts =
-      result === "W" ? goals * 4 + assists * 3 + 3 :
-      result === "D" ? goals * 4 + assists * 3 + 1 :
-      Math.max(0, goals * 4 + assists * 3 - 1);
-    return { gw: 6 - i, opponent: opp, score: `${hGoals} - ${aGoals}`, result, goals, assists, pts };
+// Compute per-match fantasy points from finished fixtures
+function computeForm(player: Player, fixtures: Fixture[], teamId: string): number[] {
+  const finished = fixtures
+    .filter((f) => f.status === "finished")
+    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time));
+
+  const last5 = finished.slice(-5);
+
+  return last5.map((f) => {
+    const isHome  = f.homeTeamId === teamId;
+    const myGoals  = isHome ? (f.homeScore ?? 0) : (f.awayScore ?? 0);
+    const oppGoals = isHome ? (f.awayScore ?? 0) : (f.homeScore ?? 0);
+
+    let pts = 2; // appearance
+    if (myGoals > oppGoals) pts += 4;        // win
+    else if (myGoals === oppGoals) pts += 1; // draw
+
+    // clean sheet bonus
+    if (oppGoals === 0 && (player.position === "GK" || player.position === "DEF")) pts += 4;
+
+    return pts;
   });
 }
+
 
 const RESULT_BG: Record<"W" | "D" | "L", string> = {
   W: "#22C55E", D: "#F59E0B", L: "#EF4444",
@@ -92,10 +100,33 @@ function FormChart({ data }: { data: number[] }) {
 
 // ── Heat blobs SVG ─────────────────────────────────────────────────────────────
 // ── Main component ─────────────────────────────────────────────────────────────
-export default function PlayerProfile({ player, team }: { player: Player; team: Team }) {
+export default function PlayerProfile({
+  player, team, fixtures = [], allTeams = [], fantasyPlayer = null,
+}: {
+  player: Player; team: Team; fixtures?: Fixture[]; allTeams?: Team[]; fantasyPlayer?: FantasyPlayer | null;
+}) {
   const router = useRouter();
-  const stats   = deriveStats(player);
-  const matches = genRecentMatches(player);
+  const derived   = deriveStats(player);
+  const formData  = computeForm(player, fixtures, team.id);
+
+  // Real stats — use live data where available, fall back to derived
+  const matchesPlayed = fixtures.filter((f) => f.status === "finished").length;
+  const totalPoints   = fantasyPlayer?.totalPoints ?? 0;
+  const avgPoints     = matchesPlayed > 0 ? Math.round((totalPoints / matchesPlayed) * 10) / 10 : 0;
+  const price         = fantasyPlayer?.price    ?? derived.price;
+  const selectedBy    = fantasyPlayer?.selectedBy ?? derived.selectedBy;
+
+  const teamMap = Object.fromEntries(allTeams.map((t) => [t.id, t]));
+
+  const recentMatches = fixtures
+    .filter((f) => f.status === "finished")
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .slice(0, 3);
+
+  const upcomingMatches = fixtures
+    .filter((f) => f.status === "scheduled")
+    .sort((a, b) => a.date.localeCompare(b.date) || a.time.localeCompare(b.time))
+    .slice(0, 3);
 
   const nameParts = player.name.trim().split(" ");
   const firstName = nameParts[0];
@@ -156,15 +187,19 @@ export default function PlayerProfile({ player, team }: { player: Player; team: 
             )}
           </div>
 
-          <div className="flex items-center gap-2 mb-3">
+          <div className="flex items-center gap-2.5 mb-3">
             {team.badgeUrl && (
-              <div className="w-7 h-7 relative shrink-0">
-                <Image src={team.badgeUrl} alt="" fill className="object-contain" />
+              <div className="relative flex-shrink-0" style={{ width: 44, height: 44 }}>
+                <div className="absolute inset-0 rounded-full"
+                  style={{ boxShadow: "0 0 12px 3px #00D9FF55", border: "2px solid #00D9FF88", borderRadius: "50%" }} />
+                <div className="absolute inset-1 rounded-full bg-white overflow-hidden">
+                  <Image src={team.badgeUrl} alt={team.shortName} fill className="object-contain p-1" />
+                </div>
               </div>
             )}
             <div>
-              <p className="text-white text-[11px] font-bold leading-none">{team.shortName}</p>
-              <p className="text-gray-500 text-[9px] mt-0.5">{POS_LABEL[player.position] ?? player.position}</p>
+              <p className="text-white text-[13px] font-bold leading-none">{team.shortName}</p>
+              <p className="text-gray-400 text-[10px] mt-0.5">{POS_LABEL[player.position] ?? player.position}</p>
             </div>
           </div>
 
@@ -179,11 +214,11 @@ export default function PlayerProfile({ player, team }: { player: Player; team: 
             <div className="flex">
               {(
                 [
-                  { Icon: Calendar,  label: "Matches", value: stats.matches },
+                  { Icon: Calendar,  label: "Matches", value: matchesPlayed },
                   { Icon: Target,    label: "Goals",   value: player.goals },
                   { Icon: Shuffle,   label: "Assists", value: player.assists },
-                  { Icon: Trophy,    label: "Points",  value: stats.points,    color: "#C7FF00" },
-                  { Icon: BarChart2, label: "Avg Pts", value: stats.avgPoints, color: "#00D9FF" },
+                  { Icon: Trophy,    label: "Points",  value: totalPoints,    color: "#C7FF00" },
+                  { Icon: BarChart2, label: "Avg Pts", value: avgPoints, color: "#00D9FF" },
                 ] as { Icon: LucideIcon; label: string; value: number; color?: string }[]
               ).map(({ Icon, label, value, color }, i, arr) => (
                 <div
@@ -215,9 +250,9 @@ export default function PlayerProfile({ player, team }: { player: Player; team: 
                 <p className="font-semibold text-navy text-[12px]">Current Form</p>
                 <p className="text-gray-400 text-[9px]">Last 5 Matches</p>
               </div>
-              <FormChart data={stats.form} />
+              <FormChart data={formData} />
               <div className="flex gap-1 mt-1.5">
-                {stats.form.map((v, i) => (
+                {formData.map((v, i) => (
                   <div
                     key={i}
                     className="flex-1 rounded py-1 font-heading text-[10px] leading-none text-center"
@@ -235,31 +270,16 @@ export default function PlayerProfile({ player, team }: { player: Player; team: 
             <div className="flex-1 bg-white rounded-2xl border border-gray-100 px-3 py-3">
               <p className="font-semibold text-navy text-[12px] mb-2">Player Price</p>
               <p className="font-heading text-[26px] text-navy leading-none">
-                £{stats.price.toFixed(1)}m
+                AED {price.toFixed(1)}m
               </p>
-              <div
-                className="inline-flex items-center gap-1 rounded-full px-2 py-0.5 mt-1.5"
-                style={{
-                  backgroundColor: stats.priceDelta >= 0 ? "#22C55E20" : "#EF444420",
-                  color: stats.priceDelta >= 0 ? "#22C55E" : "#EF4444",
-                }}
-              >
-                {stats.priceDelta >= 0
-                  ? <TrendingUp size={9} />
-                  : <TrendingDown size={9} />
-                }
-                <span className="text-[9px] font-bold">
-                  {stats.priceDelta >= 0 ? "+" : ""}{stats.priceDelta.toFixed(1)}m
-                </span>
-              </div>
               <div className="mt-3 flex flex-col gap-2">
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400 text-[10px]">Selected By</span>
-                  <span className="text-navy font-bold text-[11px]">{stats.selectedBy}%</span>
+                  <span className="text-navy font-bold text-[11px]">{selectedBy}%</span>
                 </div>
                 <div className="flex justify-between items-center">
                   <span className="text-gray-400 text-[10px]">Total Points</span>
-                  <span className="text-navy font-bold text-[11px]">{stats.points}</span>
+                  <span className="text-navy font-bold text-[11px]">{totalPoints}</span>
                 </div>
               </div>
             </div>
@@ -269,41 +289,88 @@ export default function PlayerProfile({ player, team }: { player: Player; team: 
           <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
             <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
               <p className="font-semibold text-navy text-[13px]">Recent Matches</p>
-              <span className="text-[#00D9FF] text-[10px] font-bold">View All →</span>
             </div>
-            <div className="flex items-center px-4 py-1.5 bg-gray-50 border-b border-gray-100">
-              <span className="w-7 text-[8px] font-bold text-gray-400 uppercase">GW</span>
-              <span className="flex-1 text-[8px] font-bold text-gray-400 uppercase ml-1">Opponent</span>
-              <span className="w-14 text-center text-[8px] font-bold text-gray-400 uppercase">Result</span>
-              <span className="w-6 text-center text-[8px] font-bold text-gray-400 uppercase">G</span>
-              <span className="w-6 text-center text-[8px] font-bold text-gray-400 uppercase">A</span>
-              <span className="w-8 text-right text-[8px] font-bold text-gray-400 uppercase">Pts</span>
-            </div>
-            {matches.map((m, i) => (
-              <div key={i} className="flex items-center px-4 py-2.5 border-b border-gray-50 last:border-0">
-                <span className="w-7 text-[11px] font-bold text-gray-400">{m.gw}</span>
-                <div className="flex items-center gap-2 flex-1 min-w-0 ml-1">
-                  {m.opponent.badgeUrl && (
-                    <div className="w-5 h-5 relative shrink-0">
-                      <Image src={m.opponent.badgeUrl} alt="" fill className="object-contain" />
+            {recentMatches.length === 0 ? (
+              <p className="text-gray-400 text-xs text-center py-5">No matches played yet</p>
+            ) : (
+              <>
+                <div className="flex items-center px-4 py-1.5 bg-gray-50 border-b border-gray-100">
+                  <span className="w-16 text-[8px] font-bold text-gray-400 uppercase">Date</span>
+                  <span className="flex-1 text-[8px] font-bold text-gray-400 uppercase ml-1">Opponent</span>
+                  <span className="w-14 text-center text-[8px] font-bold text-gray-400 uppercase">Result</span>
+                  <span className="w-6 text-center text-[8px] font-bold text-gray-400 uppercase">G</span>
+                  <span className="w-6 text-center text-[8px] font-bold text-gray-400 uppercase">A</span>
+                  <span className="w-8 text-right text-[8px] font-bold text-gray-400 uppercase">Pts</span>
+                </div>
+                {recentMatches.map((f) => {
+                  const isHome   = f.homeTeamId === team.id;
+                  const oppId    = isHome ? f.awayTeamId : f.homeTeamId;
+                  const opp      = teamMap[oppId];
+                  const myGoals  = isHome ? (f.homeScore ?? 0) : (f.awayScore ?? 0);
+                  const oppGoals = isHome ? (f.awayScore ?? 0) : (f.homeScore ?? 0);
+                  const result: "W"|"D"|"L" = myGoals > oppGoals ? "W" : myGoals === oppGoals ? "D" : "L";
+                  return (
+                    <div key={f.id} className="flex items-center px-4 py-2.5 border-b border-gray-50 last:border-0">
+                      <span className="w-16 text-[10px] text-gray-400">{fmtShortDate(f.date)}</span>
+                      <div className="flex items-center gap-2 flex-1 min-w-0 ml-1">
+                        {opp?.badgeUrl && (
+                          <div className="w-5 h-5 relative shrink-0 rounded-full bg-white overflow-hidden border border-gray-100">
+                            <Image src={opp.badgeUrl} alt="" fill className="object-contain p-0.5" />
+                          </div>
+                        )}
+                        <span className="text-navy text-[11px] font-semibold truncate">{opp?.shortName ?? oppId}</span>
+                      </div>
+                      <div className="w-14 flex items-center justify-center gap-1.5">
+                        <span className="text-gray-400 text-[9px]">{myGoals} - {oppGoals}</span>
+                        <span className="w-4 h-4 rounded flex items-center justify-center text-[7px] font-bold text-white shrink-0"
+                          style={{ backgroundColor: RESULT_BG[result] }}>
+                          {result}
+                        </span>
+                      </div>
+                      <span className="w-6 text-center font-heading text-navy text-[12px]">0</span>
+                      <span className="w-6 text-center font-heading text-navy text-[12px]">0</span>
+                      <span className="w-8 text-right font-heading text-[#00D9FF] text-[13px]">0</span>
                     </div>
-                  )}
-                  <span className="text-navy text-[11px] font-semibold truncate">{m.opponent.shortName}</span>
-                </div>
-                <div className="w-14 flex items-center justify-center gap-1.5">
-                  <span className="text-gray-400 text-[9px]">{m.score}</span>
-                  <span
-                    className="w-4 h-4 rounded flex items-center justify-center text-[7px] font-bold text-white shrink-0"
-                    style={{ backgroundColor: RESULT_BG[m.result] }}
-                  >
-                    {m.result}
-                  </span>
-                </div>
-                <span className="w-6 text-center font-heading text-navy text-[12px]">{m.goals}</span>
-                <span className="w-6 text-center font-heading text-navy text-[12px]">{m.assists}</span>
-                <span className="w-8 text-right font-heading text-[#00D9FF] text-[13px]">{m.pts}</span>
-              </div>
-            ))}
+                  );
+                })}
+              </>
+            )}
+          </div>
+
+          {/* Upcoming Matches */}
+          <div className="bg-white rounded-2xl border border-gray-100 overflow-hidden">
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+              <p className="font-semibold text-navy text-[13px]">Upcoming Fixtures</p>
+            </div>
+            {upcomingMatches.length === 0 ? (
+              <p className="text-gray-400 text-xs text-center py-5">No upcoming fixtures</p>
+            ) : (
+              upcomingMatches.map((f) => {
+                const isHome = f.homeTeamId === team.id;
+                const oppId  = isHome ? f.awayTeamId : f.homeTeamId;
+                const opp    = teamMap[oppId];
+                return (
+                  <div key={f.id} className="flex items-center px-4 py-3 border-b border-gray-50 last:border-0 gap-3">
+                    <div className="w-5 h-5 relative shrink-0 rounded-full bg-white overflow-hidden border border-gray-100">
+                      {opp?.badgeUrl && <Image src={opp.badgeUrl} alt="" fill className="object-contain p-0.5" />}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-navy text-[12px] font-semibold truncate">
+                        {isHome ? "vs" : "@"} {opp?.shortName ?? oppId}
+                      </p>
+                      <div className="flex items-center gap-1 text-gray-400 text-[9px] mt-0.5">
+                        <MapPin size={8} />
+                        <span className="truncate">{f.venue}</span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className="text-navy font-heading text-[13px]">{f.time}</p>
+                      <p className="text-gray-400 text-[9px]">{fmtShortDate(f.date)}</p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
 
         </div>

@@ -1,37 +1,34 @@
 import type { Player } from "@/types";
 
-const positions = ["GK", "DEF", "DEF", "MID", "MID", "MID", "FWD", "FWD", "FWD", "DEF"] as const;
+// Only confirmed real squad data is included.
+// Teams not listed here have no players until squad is confirmed.
 
-const namesByTeam: Record<string, string[]> = {
-  t1: ["Ali Hassan", "Omar Farooq", "Khalid Nasser", "Zaid Ahmed", "Samir Qureshi", "Rayan Malik", "Hamza Bilal", "Tariq Saleh", "Faris Jaber", "Nour Idris"],
-  t2: ["Mohammed Rashid", "Surya", "Safal", "Sameer Patel", "Arjun Mehta", "Dev Sharma", "Jinshad", "Kannan", "Vivek Singh", "Aakash Nair"],
-  t3: ["Carlos Ruiz", "Diego Morales", "Juan Perez", "Luis Hernandez", "Miguel Santos", "Rafael Torres", "Pedro Alves", "Marco Fernandez", "Sergio Lopez", "Bruno Costa"],
-  t4: ["James Wilson", "Tom Clarke", "Ryan Hughes", "Mark Davis", "Luke Johnson", "Harry Brown", "Jack Taylor", "Oliver White", "Noah Martin", "Ethan Thompson"],
-  t5: ["Yusuf Al-Amri", "Sultan Al-Balushi", "Fahad Al-Rashdi", "Khalil Al-Sinani", "Saif Al-Hosni", "Amer Al-Busaidi", "Hilal Al-Siyabi", "Nasser Al-Farsi", "Majid Al-Abri", "Walid Al-Shidi"],
-  t6: ["Kenji Tanaka", "Hiroshi Yamamoto", "Takeshi Ito", "Yuta Nakamura", "Shota Kimura", "Ren Suzuki", "Kenta Watanabe", "Haruki Sato", "Sota Kobayashi", "Ryota Fujita"],
-  t7: ["Ahmed Siddiqui", "Hassan Mirza", "Bilal Chaudhry", "Usman Iqbal", "Waseem Akram", "Kamran Baig", "Fawad Akhtar", "Nabeel Hussain", "Imran Zafar", "Sajid Raza"],
-  t8: ["Enzo Ricci", "Marco Bianchi", "Luca Romano", "Giorgio Ferrari", "Andrea Russo", "Matteo Conti", "Alessandro Gallo", "Davide Moretti", "Francesco Costa", "Simone Barbieri"],
-  t9: ["Kwame Asante", "Kofi Mensah", "Ama Darko", "Yaw Boateng", "Akwasi Owusu", "Fiifi Adjei", "Kojo Ansah", "Nana Opoku", "Kofi Agyei", "Kwesi Baah"],
-  t10: ["Park Ji-sung", "Kim Tae-yang", "Lee Jun-ho", "Choi Min-jun", "Jang Hyun-soo", "Oh Seung-hwan", "Hwang In-beom", "Son Heung-il", "Jung Woo-young", "Kwon Chang-hoon"],
-  t11: ["Ivan Petrov", "Mikhail Volkov", "Sergei Ivanov", "Andrei Sokolov", "Pavel Kuznetsov", "Dmitri Smirnov", "Nikolai Fedorov", "Alexei Popov", "Victor Novikov", "Roman Kozlov"],
-  t12: ["Neymar Silva", "Gabriel Costa", "Thiago Alves", "Lucas Ferreira", "Mateus Souza", "Rafael Rocha", "Vitor Lima", "Filipe Santos", "Ricardo Pereira", "Bruno Carvalho"],
-  t13: ["Mohamed Salah Jr", "Amr Mostafa", "Karim Gouda", "Hassan Abdel", "Tarek Mahmoud", "Sherif Lotfy", "Omar Nagib", "Ahmed Reda", "Khaled Monir", "Walid Samy"],
-  t14: ["Sahal", "Hashir", "Haris", "Shammas", "Amjad", "Darragh Kelly", "Shanif", "Anzil", "Ifraz", "Shakeeb"],
-  t15: ["Zlatan Eriksson", "Erik Karlsson", "Lars Lindqvist", "Johan Bergstrom", "Anders Holmberg", "Mikael Strand", "Peter Johansson", "Nils Abrahamsson", "Gustav Holm", "Henrik Ljung"],
-  t16: ["Thierry Dubois", "Nicolas Martin", "Pierre Moreau", "Jean Bernard", "Antoine Rousseau", "Julien Lefevre", "Andhru", "Sebastien Laurent", "Maxime Garnier", "Romain Girard"],
-};
+export const MOCK_PLAYERS: Player[] = [
 
-export const MOCK_PLAYERS: Player[] = Object.entries(namesByTeam).flatMap(([teamId, names]) =>
-  names.map((name, i) => ({
-    id: `${teamId}-p${i + 1}`,
-    teamId,
-    name,
-    number: i + 1,
-    position: positions[i],
-    goals: Math.floor(Math.random() * 8),
-    assists: Math.floor(Math.random() * 6),
-    yellowCards: Math.floor(Math.random() * 3),
-    redCards: Math.random() > 0.9 ? 1 : 0,
-    season: "2026" as const,
-  }))
-);
+  // ── t14 · DDP Freight Hustlers FC ────────────────────────────────────────────
+  { id: "t14-p1",  teamId: "t14", name: "Sahal",    number: 0, position: "GK",  goals: 0, assists: 0, yellowCards: 0, redCards: 0, season: "2026" },
+  { id: "t14-p2",  teamId: "t14", name: "Haris",    number: 0, position: "DEF", goals: 0, assists: 0, yellowCards: 0, redCards: 0, season: "2026" },
+  { id: "t14-p4",  teamId: "t14", name: "Hashir",   number: 0, position: "DEF", goals: 0, assists: 0, yellowCards: 0, redCards: 0, season: "2026" },
+  { id: "t14-p5",  teamId: "t14", name: "Shakeeb",  number: 0, position: "DEF", goals: 0, assists: 0, yellowCards: 0, redCards: 0, season: "2026" },
+  { id: "t14-p6",  teamId: "t14", name: "Muzammil", number: 0, position: "DEF", goals: 0, assists: 0, yellowCards: 0, redCards: 0, season: "2026" },
+  { id: "t14-p7",  teamId: "t14", name: "Shammas",  number: 0, position: "FWD", goals: 0, assists: 0, yellowCards: 0, redCards: 0, season: "2026" },
+  { id: "t14-p10", teamId: "t14", name: "Irfaz",    number: 0, position: "FWD", goals: 0, assists: 0, yellowCards: 0, redCards: 0, season: "2026" },
+  { id: "t14-p11", teamId: "t14", name: "Shanif",   number: 0, position: "FWD", goals: 0, assists: 0, yellowCards: 0, redCards: 0, season: "2026" },
+
+  // ── t3 · Himalayacool Arakkal FC ─────────────────────────────────────────────
+  { id: "t3-p1",    teamId: "t3",  name: "Faiz",     number: 0,  position: "FWD", goals: 0, assists: 0, yellowCards: 0, redCards: 0, season: "2026" },
+
+  // ── t10 · Thabbey Sporting ───────────────────────────────────────────────────
+  { id: "t10-p1",   teamId: "t10", name: "Fayaz",    number: 0,  position: "FWD", goals: 0, assists: 0, yellowCards: 0, redCards: 0, season: "2026" },
+
+  // ── t11 · Yusuf Bhai I Docs FC ───────────────────────────────────────────────
+  { id: "t11-p1",   teamId: "t11", name: "Muchu",    number: 0,  position: "FWD", goals: 0, assists: 0, yellowCards: 0, redCards: 0, season: "2026" },
+
+  // ── t16 · GTZ Shipping FC ────────────────────────────────────────────────────
+  { id: "t16-p1",   teamId: "t16", name: "Abdul Rahman", number: 0, position: "FWD", goals: 0, assists: 0, yellowCards: 0, redCards: 0, season: "2026" },
+
+  // ── t2 · Abreco Freight FC ───────────────────────────────────────────────────
+  { id: "t2-p1",   teamId: "t2",  name: "Surya",    number: 0,  position: "DEF", goals: 0, assists: 0, yellowCards: 0, redCards: 0, season: "2026" },
+  { id: "t2-p2",   teamId: "t2",  name: "Safal",    number: 0,  position: "DEF", goals: 0, assists: 0, yellowCards: 0, redCards: 0, season: "2026" },
+  { id: "t2-p3",   teamId: "t2",  name: "Kannan",   number: 0,  position: "FWD", goals: 0, assists: 0, yellowCards: 0, redCards: 0, season: "2026" },
+];
